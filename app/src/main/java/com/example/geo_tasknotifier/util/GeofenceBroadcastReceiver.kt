@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -31,11 +32,11 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                 val db = TaskDatabase.getDatabase(context)
                 val task = withContext(Dispatchers.IO) {
                     db.taskDao().getTaskById(taskId)
-                }
+                } ?: return@launch
                 val notification = NotificationCompat.Builder(context, "geo_task_channel")
                     .setSmallIcon(R.drawable.ic_notification)
                     .setContentTitle("Task Nearby")
-                    .setContentTitle(task.taskContent ?: "Check your task !")
+                    .setContentText(task.taskContent ?: "Check your task !")
                     .setAutoCancel(true)
                     .setContentIntent(
                         PendingIntent.getActivity(
@@ -65,6 +66,8 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                 ) {
                     notificationManager.notify(taskId, notification)
                     db.taskDao().deleteTask(task)
+                } else {
+                    Log.w("Notification", "Missing POST_NOTIFICATIONS permission")
                 }
             }
         }
