@@ -1,7 +1,10 @@
 package com.example.geo_tasknotifier
 
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -17,6 +20,7 @@ import com.example.geo_tasknotifier.presentation.DiffLocScreen
 import com.example.geo_tasknotifier.presentation.HomeScreen
 import com.example.geo_tasknotifier.presentation.OptionScreen
 import com.example.geo_tasknotifier.repositories.TaskRepository
+import com.example.geo_tasknotifier.ui.theme.Geo_TaskNotifierTheme
 import com.example.geo_tasknotifier.viewmodels.TaskViewModel
 import com.example.geo_tasknotifier.viewmodels.TaskViewModel.TaskViewModelFactory
 
@@ -32,33 +36,73 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private val PERMISSION_REQUEST_CODE = 1
+
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-
-            val navController = rememberNavController()
-
-            HomeScreen(taskViewModel = taskViewModel,navController)
-
-            NavHost(navController, startDestination = "HomeScreen") {
-                composable("HomeScreen"){
-                    HomeScreen(taskViewModel = taskViewModel,navController)
-                }
-                composable("OptionScreen") {
-                    OptionScreen(navController)
-                }
-                composable("CurrLocScreen") {
-                    CurrLocScreen(applicationContext, taskViewModel, navController)
-                }
-                composable("DiffLocScreen") {
-                    DiffLocScreen(taskViewModel, applicationContext, navController)
+            Geo_TaskNotifierTheme {
+                val navController = rememberNavController()
+                NavHost(navController, startDestination = "HomeScreen") {
+                    composable("HomeScreen"){
+                        HomeScreen(taskViewModel = taskViewModel,navController)
+                    }
+                    composable("OptionScreen") {
+                        OptionScreen(navController)
+                    }
+                    composable("CurrLocScreen") {
+                        CurrLocScreen(applicationContext, taskViewModel, navController)
+                    }
+                    composable("DiffLocScreen") {
+                        DiffLocScreen(taskViewModel, applicationContext, navController)
+                    }
                 }
             }
         }
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION), 1)
+        requestPermissions()
+    }
+
+    private fun requestPermissions() {
+        val permissionsToRequest = mutableListOf<String>()
+
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+            permissionsToRequest.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+            permissionsToRequest.add(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED) {
+            permissionsToRequest.add(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        if (permissionsToRequest.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, permissionsToRequest.toTypedArray(), PERMISSION_REQUEST_CODE)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+        deviceId: Int
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults, deviceId)
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            val deniedPermissions = permissions.zip(grantResults.toList()).filter { it.second != PackageManager.PERMISSION_GRANTED }
+            if (deniedPermissions.isEmpty()) {
+                Log.d("Permissions", "All permissions granted")
+            } else {
+                Toast.makeText(this, "Some permissions are required for full functionality", Toast.LENGTH_LONG).show()
+            }
         }
     }
 }
